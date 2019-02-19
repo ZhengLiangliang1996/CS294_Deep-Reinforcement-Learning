@@ -34,7 +34,7 @@ class Config(object):
     learning_rate = 0.0005
     itera = 20
     training_itera = 20
-    envname = 'Hopper-v1'
+    envname = 'Hopper-v2'
     max_steps = 1000
     
 class NN:
@@ -118,7 +118,7 @@ class NN:
                 labels,
                 predictions)
         '''
-        msn = tf.losses.mean_squared_error(labels = self.inputs_placeholder, predictions = pred) # the loss function
+        msn = tf.losses.mean_squared_error(labels = self.labels_placeholder, predictions = pred) # the loss function
         tf.summary.scalar('msn', msn)
         return msn
     
@@ -130,7 +130,7 @@ class NN:
         '''
         extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(extra_update_ops):
-            learning_rate = tf.train.exponential_decay(Config.lr, self.global_step, 1000, 0.8, staircase=True)
+            learning_rate = tf.train.exponential_decay(Config.learning_rate, self.global_step, 1000, 0.8, staircase=True)
             train_op = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=self.global_step)
         
         return train_op
@@ -144,8 +144,8 @@ class NN:
         train_writer.add_summary(rs, i)
         return loss
     
-    def fit(self, sess, train_x, train_y):
-        loss = self.train_on_batch(sess, train_x, train_y)
+    #def fit(self, sess, train_x, train_y):
+    #    loss = self.train_on_batch(sess, train_x, train_y)
     
     def __init__(self, config):
         self.config = config

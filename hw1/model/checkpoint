@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/liangliang/Desktop/CS249/CS249/CS294_Deep Reinforcement Learning/hw1/model/model_ckpt-1000"
+all_model_checkpoint_paths: "/home/liangliang/Desktop/CS249/CS249/CS294_Deep Reinforcement Learning/hw1/model/model_ckpt-1000"

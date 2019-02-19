@@ -69,8 +69,22 @@ def main():
         expert_data = {'observations': np.array(observations),
                        'actions': np.array(actions)}
 
-        with open(os.path.join('experts', args.envname + '.pkl'), 'wb') as f:
-            pickle.dump(expert_data, f, pickle.HIGHEST_PROTOCOL)
-
+#        with open(os.path.join('experts', args.envname + '.pkl'), 'wb') as f:
+#            pickle.dump(expert_data, f, pickle.HIGHEST_PROTOCOL)
+        
+        #write
+        # from https://github.com/Observerspy/CS294/blob/master/hw1/run_expert.py
+        # get path 
+        PROJECT_ROOT = os.path.dirname(os.path.realpath(__file__))
+        # path for saving training data
+        save_dir = os.path.join(PROJECT_ROOT, "data/")
+        # name of the file
+        out = os.path.join(save_dir, args.envname+'.train')
+        # savez函数的第一个参数是文件名，其后的参数都是需要保存的数组
+        # https://blog.csdn.net/xiewenbo/article/details/73832027
+        np.savez(out, expert_data['observations'], expert_data['actions'])
+        
+        #
+        print("finished!")
 if __name__ == '__main__':
     main()
