@@ -49,10 +49,39 @@ $$
 \nabla_\theta\log p_\theta(\tau)=\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_t|\mathbf{s}_t)
 $$
 - Then finally we can plug in back to the gradient of $J(\theta)$ (wrt $\theta$). 
-- 
+  
 $$
 \nabla_\theta J(\theta)=\mathbf{E}_{\tau\sim p_\theta(\tau)}\left[\left(\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_t|\mathbf{s}_t)\right)\left(\sum_{t=1}^Tr(\mathbf{s}_t,\mathbf{a}_t)\right)\right]
 $$
+- The good property of these formula is that we don't need to know initial distribution and transition function anymore.
+
+------------------
+
+- Then using Monto Carlo we get an unbiased estimation: 
+$$
+\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\left[\left(\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\right)\left(\sum_{t=1}^Tr(\mathbf{s}_{i,t},\mathbf{a}_{i,t})\right)\right]
+$$
+- After getting $\theta$, we can use graident ascent to optimize.
+
+- From the image below, we can see that a classical reinforcement learning process
+<div style="text-align:center">
+<img src="https://pic1.zhimg.com/80/v2-882bb913a3508d175342763a0d183104_hd.jpg"
+     alt="Markdown Monster icon" class="center"/>
+</div>
+
+1. for step one, running the policy $\pi_\theta(\mathbf{a}|\mathbf{s})$, get the sample $\{\tau^i\}$
+2. Then estimate the gradient of 
+$$
+\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\left[\left(\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\right)\left(\sum_{t=1}^Tr(\mathbf{s}_{i,t},\mathbf{a}_{i,t})\right)\right]
+$$
+3. Then gradient ascent: $\theta\leftarrow\theta+\alpha\nabla_\theta J(\theta)$
+
+
+- But unfortunately, this can not be a good way, we need a lot of work to make it run properly. First we need to understand what is the
+$$ 
+\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})
+$$
+    
 <br/>
 <br/>
 for the output, if your data is discrete, then it could be softmax, or it's continuous, output the parameters distribution
