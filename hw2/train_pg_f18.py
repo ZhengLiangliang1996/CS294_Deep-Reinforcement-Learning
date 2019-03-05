@@ -113,7 +113,7 @@ class Agent(object):
         else:
             sy_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32) 
         # YOUR CODE HERE
-        sy_adv_n = tf.placeholder(shape= [None], name="adv", dtype=tf.tf.float32)
+        sy_adv_n = tf.placeholder(shape= [None], name="adv", dtype=tf.float32)
         return sy_ob_no, sy_ac_na, sy_adv_n
 
 
@@ -148,12 +148,12 @@ class Agent(object):
         #raise NotImplementedError
         if self.discrete:
             # YOUR_CODE_HERE
-            sy_logits_na = build_mlp(sy_ob_no, self.ac_dim, 'multi-layer Perceptron', self.n_layers, self.size)
+            sy_logits_na = build_mlp(sy_ob_no, self.ac_dim, 'mlp', self.n_layers, self.size)
             return sy_logits_na
         else:
             # YOUR_CODE_HERE
-            sy_mean = build_mlp(sy_ob_no, self.ac_dim, 'multi-layer Perceptron', self.n_layers, self.size)
-            sy_logstd = 
+            sy_mean = build_mlp(sy_ob_no, self.ac_dim, 'mlp', self.n_layers, self.size)
+            sy_logstd = tf.Variable(tf.zeros([1, self.ac_dim], name = 'logstd'))
             return (sy_mean, sy_logstd)
 
     #========================================================================================#
@@ -184,14 +184,21 @@ class Agent(object):
                  This reduces the problem to just sampling z. (Hint: use tf.random_normal!)
         """
         
+        '''
+        https://blog.csdn.net/littlehaes/article/details/82809846
+        tf.multinomial(logits, num_samples, seed=None, name=None)
+        看一个使用LSTM的代码，使用了这个函数，故学习下。
+        从multinomial分布中采样，样本个数是num_samples，每个样本被采样的概率由logits给出
+        '''
+        
         if self.discrete:
             sy_logits_na = policy_parameters
             # YOUR_CODE_HERE
-            sy_sampled_ac = None
+            sy_sampled_ac = tf.reshape(tf.multinomial(sy_logits_na, 1), [-1])
         else:
             sy_mean, sy_logstd = policy_parameters
             # YOUR_CODE_HERE
-            sy_sampled_ac = None
+            sy_sampled_ac = sy_mean + tf.exp(sy_logstd) * tf.random_normal(shape=tf.shape(sy_mean))
         return sy_sampled_ac
 
     #========================================================================================#
@@ -220,15 +227,17 @@ class Agent(object):
                 For the discrete case, use the log probability under a categorical distribution.
                 For the continuous case, use the log probability under a multivariate gaussian.
         """
-        raise NotImplementedError
+
         if self.discrete:
             sy_logits_na = policy_parameters
             # YOUR_CODE_HERE
-            sy_logprob_n = None
+            sy_logprob_n = tf.nn.sparse_softmax_cross_entropy_with_logits(labels = self.sy_ac_na, logits = sy_logits_na)
         else:
             sy_mean, sy_logstd = policy_parameters
             # YOUR_CODE_HERE
-            sy_logprob_n = None
+            sy_z = (self.sy_ac_na - sy_mean) / tf.exp(sy_logstd)
+            sy_logprob_n = - 0.5 * tf.reduce_sum(tf.square(sy_z), axis = 1)
+            
         return sy_logprob_n
 
     def build_computation_graph(self):
@@ -269,7 +278,7 @@ class Agent(object):
         #                           ----------PROBLEM 2----------
         # Loss Function and Training Operation
         #========================================================================================#
-        loss = None # YOUR CODE HERE
+        loss =  -tf.reduce_sum(tf.multiply(self.sy_logprob_n, self.sy_adv_n))
         self.update_op = tf.train.AdamOptimizer(self.learning_rate).minimize(loss)
 
         #========================================================================================#
@@ -317,8 +326,8 @@ class Agent(object):
             #====================================================================================#
             #                           ----------PROBLEM 3----------
             #====================================================================================#
-            raise NotImplementedError
-            ac = None # YOUR CODE HERE
+            #raise NotImplementedError
+            ac = self.sess.run(self.sy_sampled_ac,feed_dict={sy_ob_no : ob[None]})
             ac = ac[0]
             acs.append(ac)
             ob, rew, done, _ = env.step(ac)
@@ -401,10 +410,27 @@ class Agent(object):
             like the 'ob_no' and 'ac_na' above. 
         """
         # YOUR_CODE_HERE
+        # initialize q_n
+        q_n = []
         if self.reward_to_go:
-            raise NotImplementedError
+            for i in range(len(re_n)):
+                # didn't really understand 
+                # adapted from https://github.com/daggertye/CS294_homework/blob/master/hw2/train_pg.py
+                q = np.zeros(len(re_n[i]))
+                q[-1] = re_n[i][-1]
+                for j in reversed(range(len(re_n[i]) - 1)):
+                    q[j] = re_n[i][j] + self.gamma * q[j+1]
+                q_n.extend(q)
+                    
         else:
-            raise NotImplementedError
+            # pay attention that i = t' - t
+            for i in range(len(re_n)):
+                sum = 0
+                for j in range(len(re_n[i])):
+                    sum = sum + (self.gamma ** i) * re_n[i][j]
+                q = np.ones(shape = [len(re_n[i])]) * sum
+                q_n.extend(q)
+            
         return q_n
 
     def compute_advantage(self, ob_no, q_n):
@@ -436,8 +462,9 @@ class Agent(object):
             # Hint #bl1: rescale the output from the nn_baseline to match the statistics
             # (mean and std) of the current batch of Q-values. (Goes with Hint
             # #bl2 in Agent.update_parameters.
-            raise NotImplementedError
-            b_n = None # YOUR CODE HERE
+            #raise NotImplementedError
+            
+            b_n = self.update_parameters # YOUR CODE HERE
             adv_n = q_n - b_n
         else:
             adv_n = q_n.copy()
@@ -523,8 +550,15 @@ class Agent(object):
         # and after an update, and then log them below. 
 
         # YOUR_CODE_HERE
-        raise NotImplementedError
-
+        #raise NotImplementedError
+        '''
+                sy_ob_no: placeholder for observations
+                sy_ac_na: placeholder for actions
+                sy_adv_n: placeholder for advantages
+        '''
+        feed = {sy_ob_no : ob_no, sy_ac_na : ac_na, sy_adv_n : adv_n}
+        _, new_loss = self.sess.run([self.update_op, loss], feed_dict=feed)
+        print(new_loss)
 
 def train_PG(
         exp_name,
