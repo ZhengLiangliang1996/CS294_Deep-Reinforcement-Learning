@@ -38,7 +38,18 @@ def build_mlp(input_placeholder, output_size, scope, n_layers, size, activation=
         Hint: use tf.layers.dense    
     """
     # YOUR CODE HERE
-    raise NotImplementedError
+    with tf.variable_scope(scope):
+        new = input_placeholder
+        for i in range(n_layers):
+            new  = tf.layers.dense(
+                                    new,
+                                    size,
+                                    activation=activation,
+                                    )
+        output_placeholder = tf.layers.dense(new, output_size, activation = output_activation)    
+        
+    print(np.shape(output_placeholder))
+    #raise NotImplementedError
     return output_placeholder
 
 def pathlength(path):
@@ -95,14 +106,14 @@ class Agent(object):
                 sy_ac_na: placeholder for actions
                 sy_adv_n: placeholder for advantages
         """
-        raise NotImplementedError
+        #raise NotImplementedError
         sy_ob_no = tf.placeholder(shape=[None, self.ob_dim], name="ob", dtype=tf.float32)
         if self.discrete:
             sy_ac_na = tf.placeholder(shape=[None], name="ac", dtype=tf.int32) 
         else:
             sy_ac_na = tf.placeholder(shape=[None, self.ac_dim], name="ac", dtype=tf.float32) 
         # YOUR CODE HERE
-        sy_adv_n = None
+        sy_adv_n = tf.placeholder(shape= [None], name="adv", dtype=tf.tf.float32)
         return sy_ob_no, sy_ac_na, sy_adv_n
 
 
@@ -111,7 +122,7 @@ class Agent(object):
     #========================================================================================#
     def policy_forward_pass(self, sy_ob_no):
         """ Constructs the symbolic operation for the policy network outputs,
-            which are the parameters of the policy distribution p(a|s)
+            which are the parameters of the policy distribution pi(a|s)
 
             arguments:
                 sy_ob_no: (batch_size, self.ob_dim)
@@ -134,15 +145,15 @@ class Agent(object):
                 Pass in self.n_layers for the 'n_layers' argument, and
                 pass in self.size for the 'size' argument.
         """
-        raise NotImplementedError
+        #raise NotImplementedError
         if self.discrete:
             # YOUR_CODE_HERE
-            sy_logits_na = None
+            sy_logits_na = build_mlp(sy_ob_no, self.ac_dim, 'multi-layer Perceptron', self.n_layers, self.size)
             return sy_logits_na
         else:
             # YOUR_CODE_HERE
-            sy_mean = None
-            sy_logstd = None
+            sy_mean = build_mlp(sy_ob_no, self.ac_dim, 'multi-layer Perceptron', self.n_layers, self.size)
+            sy_logstd = 
             return (sy_mean, sy_logstd)
 
     #========================================================================================#
@@ -172,7 +183,7 @@ class Agent(object):
         
                  This reduces the problem to just sampling z. (Hint: use tf.random_normal!)
         """
-        raise NotImplementedError
+        
         if self.discrete:
             sy_logits_na = policy_parameters
             # YOUR_CODE_HERE
