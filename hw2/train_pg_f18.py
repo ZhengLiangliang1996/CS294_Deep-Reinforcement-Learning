@@ -327,7 +327,7 @@ class Agent(object):
             #                           ----------PROBLEM 3----------
             #====================================================================================#
             #raise NotImplementedError
-            ac = self.sess.run(self.sy_sampled_ac,feed_dict={sy_ob_no : ob[None]})
+            ac = self.sess.run(self.sy_sampled_ac,feed_dict={self.sy_ob_no : ob[None]})
             ac = ac[0]
             acs.append(ac)
             ob, rew, done, _ = env.step(ac)
@@ -498,8 +498,9 @@ class Agent(object):
         if self.normalize_advantages:
             # On the next line, implement a trick which is known empirically to reduce variance
             # in policy gradient methods: normalize adv_n to have mean zero and std=1.
-            raise NotImplementedError
-            adv_n = None # YOUR_CODE_HERE
+            #raise NotImplementedError
+            
+            adv_n = (adv_n - np.mean(adv_n)) / (np.std(adv_n) + 1e-8) # YOUR_CODE_HERE
         return q_n, adv_n
 
     def update_parameters(self, ob_no, ac_na, q_n, adv_n):
@@ -556,9 +557,8 @@ class Agent(object):
                 sy_ac_na: placeholder for actions
                 sy_adv_n: placeholder for advantages
         '''
-        feed = {sy_ob_no : ob_no, sy_ac_na : ac_na, sy_adv_n : adv_n}
-        _, new_loss = self.sess.run([self.update_op, loss], feed_dict=feed)
-        print(new_loss)
+        feed = {self.sy_ob_no: ob_no, self.sy_ac_na: ac_na, self.sy_adv_n: adv_n}
+        _  = self.sess.run([self.update_op], feed_dict=feed)
 
 def train_PG(
         exp_name,

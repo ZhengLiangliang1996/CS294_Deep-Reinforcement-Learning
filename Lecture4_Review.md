@@ -48,3 +48,36 @@ $$
 4. 放入策略梯度函数$\nabla_\theta J(\theta)\approx\sum_{t=1}^T\left[\nabla_\theta\log \pi_\theta(\mathbf{a}_t|\mathbf{s}_t)\hat{A}^\pi(\mathbf{s}_t,\mathbf{a}_t)\right]$。
 5.走一个梯度步$\theta\leftarrow \theta+\alpha\nabla_\theta J(\theta)$。
 
+### Discount Factor: 
+- When training our walker 2D, we want the robot to be walking continuously, this will make our objective value bigger and bigger, so it will become infinity, we want $\hat{V}^\pi_\phi$ in $y_{i,t}\approx r(\mathbf{s}_{i,t},\mathbf{a}_{i,t})+\hat{V}_\phi^\pi(\mathbf{s}_{i,t+1})$ gets smaller when training. Then we can use discount factor, $y_{i,t}\approx r(\mathbf{s}_{i,t},\mathbf{a}_{i,t})+\gamma\hat{V}_\phi^\pi(\mathbf{s}_{i,t+1})$, in practice we set discount factor as 0.99
+
+- The introduction of discount factor will not influence the whole MDP, it only changes transition probability function a litle bit.
+
+- There are 2 ways to introduce discount factor into our policy gradient
+    1. $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\sum_{t=1}^T\nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\left(\sum_{t'=t}^T\gamma^{t'-t}r(\mathbf{s}_{i,t'},\mathbf{a}_{i,t'})\right)$ this can be gained by using causality, if we add critic then it becomes $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\sum_{t=1}^T\nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\left(r(\mathbf{s}_{i,t},\mathbf{a}_{i,t})+\gamma\hat{V}^\pi_\phi(\mathbf{s}_{i,t+1})-\hat{V}^\pi_\phi(\mathbf{s}_{i,t})\right)$
+    2. $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\left[\left(\sum_{t=1}^T\nabla_\theta\log \pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\right)\left(\sum_{t=1}^T\gamma^{t-1}r(\mathbf{s}_{i,t},\mathbf{a}_{i,t})\right)\right]$, rewrite the second one to $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\sum_{t=1}^T\gamma^{t-1}\nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\left(\sum_{t'=t}^T\gamma^{t'-t}r(\mathbf{s}_{i,t'},\mathbf{a}_{i,t'})\right)$. But this is a little bit weried, since the gradient has been discounted now.
+
+- Then algorithm will become:
+1. 在线运行机器人，根据策略执行行动$\mathbf{a}\sim\pi_\theta(\mathbf{a}|\mathbf{s})$，得到一个状态转移样本$(\mathbf{s},\mathbf{a},\mathbf{s}',r)$，即从一个状态出发执行某行动到哪个新的状态，单步收益多少。
+2. 使用评论家的结果$r+\gamma\hat{V}^\pi_\phi(\mathbf{s}')$来更新$\hat{V}^\pi_\phi(\mathbf{s})$。
+3. 评估优势函数$\hat{A}^\pi(\mathbf{s},\mathbf{a})=r(\mathbf{s},\mathbf{a})+\gamma\hat{V}^\pi_\phi(\mathbf{s}')-\hat{V}^\pi_\phi(\mathbf{s})$。
+4. 放入策略梯度函数$\nabla_\theta J(\theta)\approx\nabla_\theta\log \pi_\theta(\mathbf{a}|\mathbf{s})\hat{A}^\pi(\mathbf{s},\mathbf{a})$。
+5. 走一个梯度步$\theta\leftarrow \theta+\alpha\nabla_\theta J(\theta)$。
+
+### Implementation
+- bacth actor-critic and online actor-critic: we need to get actor $\pi_\theta(\mathbf{a}|\mathbf{s})$ based on s, but now we also need to estimate critic function $\hat{V}^\pi_\phi(\mathbf{s})$ based on s, a straightforward way to do that is to get them both using two network design, but the problem is that those 2 function have not been connected (sharing part). 
+- A solution is that using the same input and output actor policu and critic function at the same time, which will be better in a large NN, but when training it will take time, since there are 2 different gradient in 2 different way sharing the same parameter.
+
+
+<p align="center">
+<img src="https://pic4.zhimg.com/80/v2-d9be8c0956d1b4dcc43d89b133c0281f_hd.jpg" alt="drawing" width="600"/>
+</p>
+
+- In the algorithm, we noticed that in the second and forth step, we onlu used one sample, which may lead to high variance, so the main problem now is that it is still an on-policy algorithm, online means after updating $\theta$ that in the fifth step, all the sample need to be updated. if we can male batch, then it could be better. A way is that we try not to update our policy, which is called quasi-online, after many step then updating our policy. If our sample has multi-agent, then we can run it in parallel. The first way is using synchronized, multi-agent run one step and collect data and calculate gradient, but it some agents should wait for others.Then adding all their gradient to update actor-policy network. 
+- A way better way is synchronous。
+
+<p align="center">
+<img src="https://pic2.zhimg.com/80/v2-dd59a94ebf0a72a30c189174167b4579_hd.jpg" alt="drawing" width="600"/>
+</p>
+
+- We want to see how the baseline approach can be better applied to the actor-critic approach. For the actor-critic algorithm, our strategy gradient is estimated to be $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\sum_{t=1}^T \nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\left(r(\mathbf{s}_{i,t },\mathbf{a}_{i,t})+\gamma\hat{V}^\pi_\phi(\mathbf{s}_{i,t+1})-\hat{V}^\ Pi_\phi(\mathbf{s}_{i,t})\right)$. The main advantage of this method is that we use a critic function, since we want a smaller variance; however, this estimate is not unbiased, because the critic function can't always be perfectly fit; and the pre-critic function in training is usually very inaccurate, so no matter how small the variance is, it doesn't get a good value because of the meaninglessness of the critic function. The other extreme is the Monte Carlo sampling of the policy gradient, $\nabla_\theta J(\theta)\approx\frac{1}{N}\sum_{i=1}^N\sum_{t=1}^ T\nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t})\left(\left(\sum_{t'=t} ^T\gamma^{t'-t}r(\mathbf{s}_{i,t'},\mathbf{a}_{i,t'})\right)-b\right)$, where b is an arbitrary constant. This approach is mainly based on the unbiasedness we have demonstrated before, and the main drawback is that the extremely high variance of the one-sample estimate makes itself not very meaningful. Another correct use of the critic function here is to use the critic function (according to the current state) as the baseline b, resulting in $\nabla_\theta J(\theta)\approx\frac{1}{N}\ Sum_{i=1}^N\sum_{t=1}^T\nabla_\theta\log\pi_\theta(\mathbf{a}_{i,t}|\mathbf{s}_{i,t })\left(\left(\sum_{t'=t}^T\gamma^{t'-t}r(\mathbf{s}_{i,t'},\mathbf{a}_{i ,t'})\right)-\hat{V}^\pi_\phi(\mathbf{s}_{i,t})\right)$. Unlike the previous constants, the baseline is state-dependent; but it is still unbiased (similar to the previous derivation expansion), and in fact changed to anything only with $\mathbf{s}_{i,t}$ The related functions are unbiased. Therefore, unbiasedness is preserved, but if the baseline is close to real gain, the variance will be greatly reduced. State-dependent baselines solve problems more sensitively and work better than a constant falloff.
